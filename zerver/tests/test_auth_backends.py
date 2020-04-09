@@ -1661,8 +1661,8 @@ class GitHubAuthBackendTest(SocialAuthBase):
 
         self.email_data = email_data
 
-    def get_account_data_dict(self, email: str, name: str) -> Dict[str, Any]:
-        return dict(email=email, name=name)
+    def get_account_data_dict(self, email: str, name: str, user_avatar_url: str='') -> Dict[str, Any]:
+        return dict(email=email, name=name, avatar_url=user_avatar_url)
 
     def test_social_auth_email_not_verified(self) -> None:
         account_data_dict = self.get_account_data_dict(email=self.email, name=self.name)
@@ -1735,7 +1735,7 @@ class GitHubAuthBackendTest(SocialAuthBase):
             self.assertTrue(github_auth_enabled())
 
     def test_github_oauth2_success_non_primary(self) -> None:
-        account_data_dict = dict(email='nonprimary@zulip.com', name="Non Primary")
+        account_data_dict = self.get_account_data_dict(email='nonprimary@zulip.com', name="Non Primary")
         email_data = [
             dict(email=account_data_dict["email"],
                  verified=True),
@@ -1766,7 +1766,7 @@ class GitHubAuthBackendTest(SocialAuthBase):
         # If the user has a single email associated with its GitHub account,
         # the choose email screen should not be shown and the first email
         # should be used for user's signup/login.
-        account_data_dict = dict(email='not-hamlet@zulip.com', name=self.name)
+        account_data_dict = self.get_account_data_dict(email='not-hamlet@zulip.com', name=self.name)
         email_data = [
             dict(email='hamlet@zulip.com',
                  verified=True,
@@ -1823,7 +1823,7 @@ class GitHubAuthBackendTest(SocialAuthBase):
         # In the login flow, if multiple of the user's verified emails
         # are associated with existing accounts, we expect the choose
         # email screen to select which account to use.
-        account_data_dict = dict(email='hamlet@zulip.com', name="Hamlet")
+        account_data_dict = self.get_account_data_dict(email='hamlet@zulip.com', name="Hamlet")
         email_data = [
             dict(email=account_data_dict["email"],
                  verified=True),
@@ -1855,7 +1855,7 @@ class GitHubAuthBackendTest(SocialAuthBase):
         # none of which are associated with an existing account, the
         # choose email screen should be shown (which will lead to a
         # "continue to registration" choice).
-        account_data_dict = dict(email="not-hamlet@zulip.com", name="Not Hamlet")
+        account_data_dict = self.get_account_data_dict(email="not-hamlet@zulip.com", name="Not Hamlet")
         email_data = [
             dict(email=account_data_dict["email"],
                  verified=True),
@@ -1934,7 +1934,7 @@ class GitHubAuthBackendTest(SocialAuthBase):
         # As emails ending with `noreply.github.com` are excluded from
         # verified_emails, choosing it as an email should raise a `email
         # not associated` warning.
-        account_data_dict = dict(email="hamlet@users.noreply.github.com", name=self.name)
+        account_data_dict = self.get_account_data_dict(email="hamlet@users.noreply.github.com", name=self.name)
         email_data = [
             dict(email="notprimary@zulip.com",
                  verified=True),
@@ -1957,7 +1957,7 @@ class GitHubAuthBackendTest(SocialAuthBase):
                                                  " emails associated with the account")
 
     def test_github_oauth2_email_not_associated(self) -> None:
-        account_data_dict = dict(email='not-associated@zulip.com', name=self.name)
+        account_data_dict = self.get_account_data_dict(email='not-associated@zulip.com', name=self.name)
         email_data = [
             dict(email='nonprimary@zulip.com',
                  verified=True,),
