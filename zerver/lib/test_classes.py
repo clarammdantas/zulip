@@ -679,6 +679,7 @@ class ZulipTestCase(TestCase):
 
     def make_stream(self, stream_name: str, realm: Optional[Realm]=None,
                     invite_only: Optional[bool]=False,
+                    is_web_public: Optional[bool]=False,
                     history_public_to_subscribers: Optional[bool]=None) -> Stream:
         if realm is None:
             realm = get_realm('zulip')
@@ -691,6 +692,7 @@ class ZulipTestCase(TestCase):
                 realm=realm,
                 name=stream_name,
                 invite_only=invite_only,
+                is_web_public=is_web_public,
                 history_public_to_subscribers=history_public_to_subscribers,
             )
         except IntegrityError:  # nocoverage -- this is for bugs in the tests

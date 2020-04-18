@@ -196,6 +196,11 @@ class TestCreateStreams(ZulipTestCase):
                 "description": "Public stream with public history"
             },
             {
+                "name": "webpublicstream",
+                "description": "Web public stream with public history",
+                "is_web_public": True
+            },
+            {
                 "name": "privatestream",
                 "description": "Private stream with non-public history",
                 "invite_only": True
@@ -216,10 +221,12 @@ class TestCreateStreams(ZulipTestCase):
 
         created, existing = create_streams_if_needed(realm, stream_dicts)
 
-        self.assertEqual(len(created), 4)
+        self.assertEqual(len(created), 5)
         self.assertEqual(len(existing), 0)
         for stream in created:
             if stream.name == 'publicstream':
+                self.assertTrue(stream.history_public_to_subscribers)
+            if stream.name == 'webpublicstream':
                 self.assertTrue(stream.history_public_to_subscribers)
             if stream.name == 'privatestream':
                 self.assertFalse(stream.history_public_to_subscribers)
@@ -361,6 +368,30 @@ class StreamAdminTest(ZulipTestCase):
         stream = get_stream('private_stream', realm)
         self.assertFalse(stream.invite_only)
         self.assertTrue(stream.history_public_to_subscribers)
+
+    def test_make_web_public_stream(self) -> None:
+        user_profile = self.example_user('hamlet')
+        self.login_user(user_profile)
+        realm = user_profile.realm
+        self.make_stream('web_public_stream',
+                         realm=realm,
+                         is_web_public=True,
+                         history_public_to_subscribers=True)
+
+        do_change_user_role(user_profile, UserProfile.ROLE_REALM_ADMINISTRATOR)
+        params = {
+            'stream_name': ujson.dumps('web_public_stream'),
+            'is_web_public': ujson.dumps(True),
+            'history_public_to_subscribers': ujson.dumps(True)
+        }
+        stream = get_stream('web_public_stream', realm)
+        result = self.client_patch(f"/json/streams/{stream.id}", params)
+        self.assertEqual(result.status_code, 200)
+        self.assert_json_success(result)
+
+        self.assertTrue(stream.history_public_to_subscribers)
+        self.assertTrue(stream.is_web_public)
+        self.assertFalse(stream.invite_only)
 
     def test_make_stream_private(self) -> None:
         user_profile = self.example_user('hamlet')

@@ -150,18 +150,28 @@ function create_stream() {
 
     let invite_only;
     let history_public_to_subscribers;
+    let is_web_public;
     const privacy_setting = $('#stream_creation_form input[name=privacy]:checked').val();
 
+    // TODO: Infer the variables so there is no need to define all three.
     if (privacy_setting === 'invite-only') {
+        is_web_public = false;
         invite_only = true;
         history_public_to_subscribers = false;
     } else if (privacy_setting === 'invite-only-public-history') {
+        is_web_public = false;
         invite_only = true;
         history_public_to_subscribers = true;
+    } else if (privacy_setting === 'is-web-public') {
+        is_web_public = true;
+        invite_only = false;
+        history_public_to_subscribers = true;
     } else {
+        is_web_public = false;
         invite_only = false;
         history_public_to_subscribers = true;
     }
+    data.is_web_public = JSON.stringify(is_web_public);
     data.invite_only = JSON.stringify(invite_only);
     data.history_public_to_subscribers = JSON.stringify(history_public_to_subscribers);
 

@@ -311,6 +311,7 @@ def add_subscriptions_backend(
                 ])
             )),
         invite_only: bool=REQ(validator=check_bool, default=False),
+        is_web_public: bool=REQ(validator=check_bool, default=False),
         stream_post_policy: int=REQ(validator=check_int_in(
             Stream.STREAM_POST_POLICY_TYPES), default=Stream.STREAM_POST_POLICY_EVERYONE),
         history_public_to_subscribers: Optional[bool]=REQ(validator=check_bool, default=None),
@@ -335,6 +336,7 @@ def add_subscriptions_backend(
         # Strip the stream name here.
         stream_dict_copy['name'] = stream_dict_copy['name'].strip()
         stream_dict_copy["invite_only"] = invite_only
+        stream_dict_copy["is_web_public"] = is_web_public
         stream_dict_copy["stream_post_policy"] = stream_post_policy
         stream_dict_copy["history_public_to_subscribers"] = history_public_to_subscribers
         stream_dicts.append(stream_dict_copy)

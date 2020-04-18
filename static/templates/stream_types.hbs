@@ -10,6 +10,12 @@
     </li>
     <li>
         <label class="radio">
+            <input type="radio" name="privacy" value="is-web-public" {{#if is_web_public}}checked{{/if}}/>
+            {{t '<b>Web public:</b> anyone (including guest users) can join; can view complete message history without joining' }}
+        </label>
+    </li>
+    <li>
+        <label class="radio">
             <input type="radio" name="privacy" value="invite-only-public-history" {{#if is_private_with_public_history}}checked{{/if}} />
             {{t '<b>Private, shared history:</b> must be invited by a member; new members can view complete message history; hidden from non-administrator users' }}
         </label>

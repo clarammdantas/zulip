@@ -1839,7 +1839,6 @@ def check_send_typing_notification(sender: UserProfile, notification_to: Union[S
         operator=operator,
     )
 
-
 def ensure_stream(realm: Realm,
                   stream_name: str,
                   invite_only: bool=False,
@@ -2488,6 +2487,7 @@ def validate_user_access_to_subscribers(user_profile: Optional[UserProfile],
     validate_user_access_to_subscribers_helper(
         user_profile,
         {"realm_id": stream.realm_id,
+         "is_web_public": stream.is_web_public,
          "invite_only": stream.invite_only},
         # We use a lambda here so that we only compute whether the
         # user is subscribed if we have to
@@ -4705,6 +4705,7 @@ def gather_subscriptions_helper(user_profile: UserProfile,
             "date_created",
             # The realm_id and recipient_id are generally not needed in the API.
             "realm_id",
+            "is_web_public",
             "recipient_id",
             # email_token isn't public to some users with access to
             # the stream, so doesn't belong in API_FIELDS.
@@ -4714,6 +4715,10 @@ def gather_subscriptions_helper(user_profile: UserProfile,
     stream_hash = {}
     for stream in stream_dicts:
         stream_hash[stream["id"]] = stream
+    for sub in sub_dicts:
+        stream = stream_hash.get(sub["stream_id"])
+        if stream:
+            sub["is_web_public"] = stream.get("is_web_public", False)
 
     all_streams_id = [stream["id"] for stream in all_streams]
 
