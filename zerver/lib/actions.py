@@ -4713,8 +4713,10 @@ def gather_subscriptions_helper(user_profile: UserProfile,
 
     stream_dicts = [stream for stream in all_streams if stream['id'] in stream_ids]
     stream_hash = {}
+    web_public_stream_ids = [stream['id'] for stream in all_streams if stream['is_web_public']]
     for stream in stream_dicts:
         stream_hash[stream["id"]] = stream
+
     for sub in sub_dicts:
         stream = stream_hash.get(sub["stream_id"])
         if stream:
@@ -4803,13 +4805,11 @@ def gather_subscriptions_helper(user_profile: UserProfile,
         else:
             unsubscribed.append(stream_dict)
 
-    # TODO: This function needs to provide a filtered subset of just
-    # web_public streams for guest users in organizations that have them.
     all_streams_id_set = set(all_streams_id)
     if user_profile.can_access_public_streams():
         never_subscribed_stream_ids = all_streams_id_set - sub_unsub_stream_ids
     else:
-        never_subscribed_stream_ids = set()
+        never_subscribed_stream_ids = set(web_public_stream_ids)
     never_subscribed_streams = [ns_stream_dict for ns_stream_dict in all_streams
                                 if ns_stream_dict['id'] in never_subscribed_stream_ids]
 
@@ -4835,6 +4835,7 @@ def gather_subscriptions_helper(user_profile: UserProfile,
                 if subscribers is not None:
                     stream_dict['subscribers'] = subscribers
             never_subscribed.append(stream_dict)
+
     return (sorted(subscribed, key=lambda x: x['name']),
             sorted(unsubscribed, key=lambda x: x['name']),
             sorted(never_subscribed, key=lambda x: x['name']))

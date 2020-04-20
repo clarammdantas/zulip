@@ -3692,6 +3692,11 @@ class GetSubscribersTest(ZulipTestCase):
             'test_stream_invite_only_2',
         ]
 
+        web_public_streams = [
+            'test_stream_web_public_1',
+            'test_stream_web_public_2',
+        ]
+
         def create_public_streams() -> None:
             for stream_name in public_streams:
                 self.make_stream(stream_name, realm=realm)
@@ -3704,6 +3709,19 @@ class GetSubscribersTest(ZulipTestCase):
             self.assert_json_success(ret)
 
         create_public_streams()
+
+        def create_web_public_streams() -> None:
+            for stream_name in web_public_streams:
+                self.make_stream(stream_name, realm=realm, is_web_public=True)
+
+            ret = self.common_subscribe_to_streams(
+                self.user_profile,
+                web_public_streams,
+                dict(principals=ujson.dumps(users_to_subscribe))
+            )
+            self.assert_json_success(ret)
+
+        create_web_public_streams()
 
         def create_private_streams() -> None:
             ret = self.common_subscribe_to_streams(
@@ -3732,7 +3750,7 @@ class GetSubscribersTest(ZulipTestCase):
         never_subscribed = get_never_subscribed()
 
         # Invite only stream should not be there in never_subscribed streams
-        self.assertEqual(len(never_subscribed), len(public_streams))
+        self.assertEqual(len(never_subscribed), len(public_streams) + len(web_public_streams))
         for stream_dict in never_subscribed:
             name = stream_dict['name']
             self.assertFalse('invite_only' in name)
@@ -3746,12 +3764,23 @@ class GetSubscribersTest(ZulipTestCase):
 
             self.assertEqual(
                 len(never_subscribed),
-                len(public_streams) + len(private_streams)
+                len(public_streams) + len(private_streams) + len(web_public_streams)
             )
             for stream_dict in never_subscribed:
                 self.assertTrue(len(stream_dict["subscribers"]) == len(users_to_subscribe))
 
         test_admin_case()
+
+        def test_guest_user_case() -> None:
+            self.user_profile.role = UserProfile.ROLE_GUEST
+            never_subscribed = get_never_subscribed()
+
+            self.assertEqual(len(never_subscribed), len(web_public_streams))
+            for stream_dict in never_subscribed:
+                self.assertTrue(len(stream_dict['subscribers']) == len(users_to_subscribe))
+                self.assertTrue(stream_dict['is_web_public'])
+
+        test_guest_user_case()
 
     def test_gather_subscribed_streams_for_guest_user(self) -> None:
         guest_user = self.example_user("polonius")
@@ -3792,20 +3821,24 @@ class GetSubscribersTest(ZulipTestCase):
         self.assertTrue(expected_stream_exists)
 
         # Guest user don't get data about never subscribed public stream's data
-        self.assertEqual(len(neversubs), 0)
+        for stream in neversubs:
+            self.assertTrue(stream['is_web_public'])
 
     def test_previously_subscribed_private_streams(self) -> None:
         admin_user = self.example_user("iago")
         non_admin_user = self.example_user("cordelia")
+        guest_user = self.example_user("polonius")
         stream_name = "private_stream"
 
         self.make_stream(stream_name, realm=get_realm("zulip"), invite_only=True)
         self.subscribe(admin_user, stream_name)
         self.subscribe(non_admin_user, stream_name)
+        self.subscribe(guest_user, stream_name)
         self.subscribe(self.example_user("othello"), stream_name)
 
         self.unsubscribe(admin_user, stream_name)
         self.unsubscribe(non_admin_user, stream_name)
+        self.unsubscribe(guest_user, stream_name)
 
         # Test admin user gets previously subscribed private stream's subscribers.
         sub_data = gather_subscriptions_helper(admin_user)
@@ -3815,6 +3848,12 @@ class GetSubscribersTest(ZulipTestCase):
 
         # Test non admin users cannot get previously subscribed private stream's subscribers.
         sub_data = gather_subscriptions_helper(non_admin_user)
+        unsubscribed_streams = sub_data[1]
+        self.assertEqual(len(unsubscribed_streams), 1)
+        self.assertFalse('subscribers' in unsubscribed_streams[0])
+
+        # Test guest users cannot get previously subscribed private stream's subscribers.
+        sub_data = gather_subscriptions_helper(guest_user)
         unsubscribed_streams = sub_data[1]
         self.assertEqual(len(unsubscribed_streams), 1)
         self.assertFalse('subscribers' in unsubscribed_streams[0])

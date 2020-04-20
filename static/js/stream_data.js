@@ -308,9 +308,12 @@ exports.get_updated_unsorted_subs = function () {
         exports.update_calculated_fields(sub);
     }
 
-    // We don't display unsubscribed streams to guest users unless they are web_public.
+    // We display unsubscribed streams to guest users, but unless they are web_public,
+    // their information on the edit panel is blocked and they can only see messages
+    // sent before they unsubscribed.
     if (page_params.is_guest) {
-        all_subs = all_subs.filter(sub => sub.subscribed || sub.is_web_public);
+        all_subs = all_subs.filter(sub => sub.subscribed || sub.is_web_public ||
+                                   sub.previously_subscribed);
     }
 
     return all_subs;

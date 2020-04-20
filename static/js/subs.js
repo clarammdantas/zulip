@@ -560,9 +560,6 @@ exports.setup_page = function (callback) {
             const toggler_elem = exports.toggler.get();
             $("#subscriptions_table .search-container").prepend(toggler_elem);
         }
-        if (page_params.is_guest) {
-            exports.toggler.disable_tab('all-streams');
-        }
 
         // show the "Stream settings" header by default.
         $(".display-type #stream_settings_title").show();

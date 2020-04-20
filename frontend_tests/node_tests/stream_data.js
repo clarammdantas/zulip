@@ -475,27 +475,42 @@ run_test('stream_settings', () => {
         history_public_to_subscribers: true,
         stream_post_policy: stream_data.stream_post_policy_values.admins.code,
     };
+
+    const web_public_stream = {
+        stream_id: 4,
+        name: 'd',
+        color: 'red',
+        subscribed: false,
+        invite_only: false,
+        is_web_public: true,
+    };
+
     stream_data.clear_subscriptions();
     stream_data.add_sub(cinnamon);
     stream_data.add_sub(amber);
     stream_data.add_sub(blue);
+    stream_data.add_sub(web_public_stream);
 
     let sub_rows = stream_data.get_streams_for_settings_page();
-    assert.equal(sub_rows[0].color, 'blue');
-    assert.equal(sub_rows[1].color, 'amber');
-    assert.equal(sub_rows[2].color, 'cinnamon');
+    assert.equal(sub_rows[0].color, blue.color);
+    assert.equal(sub_rows[1].color, web_public_stream.color);
+    assert.equal(sub_rows[2].color, amber.color);
+    assert.equal(sub_rows[3].color, cinnamon.color);
 
     sub_rows = stream_data.get_streams_for_admin();
-    assert.equal(sub_rows[0].name, 'a');
-    assert.equal(sub_rows[1].name, 'b');
-    assert.equal(sub_rows[2].name, 'c');
+    assert.equal(sub_rows[0].name, amber.name);
+    assert.equal(sub_rows[1].name, blue.name);
+    assert.equal(sub_rows[2].name, cinnamon.name);
+    assert.equal(sub_rows[3].name, web_public_stream.name);
     assert.equal(sub_rows[0].invite_only, true);
     assert.equal(sub_rows[1].invite_only, false);
     assert.equal(sub_rows[2].invite_only, false);
+    assert.equal(sub_rows[3].invite_only, false);
 
     assert.equal(sub_rows[0].history_public_to_subscribers, true);
     assert.equal(sub_rows[0].stream_post_policy ===
         stream_data.stream_post_policy_values.admins.code, true);
+    assert.equal(sub_rows[3].is_web_public, true);
 
     const sub = stream_data.get_sub('a');
     stream_data.update_stream_privacy(sub, {
@@ -509,14 +524,141 @@ run_test('stream_settings', () => {
     assert.equal(sub.stream_post_policy,
                  stream_data.stream_post_policy_values.everyone.code);
 
-    // For guest user only retrieve subscribed streams
+    /*
+      For guest users, retrieve:
+       - subscribed streams
+       - previously subscribed streams (only message history from when they were
+         subscribed)
+       - all web public streams.
+    */
     sub_rows = stream_data.get_updated_unsorted_subs();
-    assert.equal(sub_rows.length, 3);
+    assert.equal(sub_rows.length, 4);
+
     global.page_params.is_guest = true;
+    const unsubscribed = {
+        stream_id: 5,
+        name: 'e',
+        color: 'yellow',
+        subscribed: false,
+        invite_only: false,
+        is_web_public: false,
+        previously_subscribed: true,
+    };
+    stream_data.add_sub(unsubscribed);
     sub_rows = stream_data.get_updated_unsorted_subs();
-    assert.equal(sub_rows[0].name, 'c');
-    assert.equal(sub_rows[1].name, 'a');
-    assert.equal(sub_rows.length, 2);
+    assert.equal(sub_rows[0].name, cinnamon.name);
+    assert.equal(sub_rows[1].name, amber.name);
+    assert.equal(sub_rows[2].name, web_public_stream.name);
+    assert.equal(sub_rows[3].name, unsubscribed.name);
+    assert.equal(sub_rows.length, 4);
+});
+
+run_test('guest_user_access_to_streams', () => {
+    stream_data.clear_subscriptions();
+    const params = {};
+    params.subscriptions = [{
+        stream_id: 1,
+        name: 'public_sub',
+        subscribed: true,
+        invite_only: false,
+    }];
+    params.unsubscribed = [
+        {
+            stream_id: 2,
+            name: 'private_unsub',
+            subscribed: false,
+            previously_subscribed: true,
+            invite_only: true,
+            history_public_to_subscribers: true,
+        },
+        {
+            stream_id: 3,
+            name: 'public_unsub',
+            subscribed: false,
+            previously_subscribed: true,
+            invite_only: false,
+            is_web_public: false,
+        },
+        {
+            stream_id: 4,
+            name: 'web_public_unsub',
+            subscribed: false,
+            previously_subscribed: true,
+            invite_only: false,
+            is_web_public: true,
+        },
+    ];
+    params.never_subscribed = [
+        {
+            stream_id: 5,
+            name: 'web_public_never_sub',
+            subscribed: false,
+            previously_subscribed: false,
+            invite_only: false,
+            is_web_public: true,
+        },
+    ];
+    params.realm_default_streams = [];
+    params.is_guest = true;
+    global.page_params.is_admin = false;
+
+    stream_data.initialize(params);
+    const subs = stream_data.get_streams_for_settings_page();
+
+    assert.equal(subs.length, 5);
+    assert.equal(subs[0].name, 'private_unsub');
+    assert.equal(subs[1].name, 'public_unsub');
+    assert.equal(subs[2].name, 'web_public_never_sub');
+    assert.equal(subs[3].name, 'web_public_unsub');
+    assert.equal(subs[4].name, 'public_sub');
+
+    const unsub_stream_ids = [2, 4, 3];
+    const sub_stream_ids = [1];
+    const never_sub_ids = [5];
+
+    function check_sub_stream(sub) {
+        assert.equal(sub.subscribed, true);
+        assert.equal(sub.can_access_subscribers, true);
+        // Guest users can unsubscribe to any stream they're subscribed.
+        assert.equal(sub.should_display_subscription_button, true);
+        assert.equal(sub.should_display_preview_button, true);
+    }
+
+    function check_unsub_stream(sub) {
+        assert.equal(sub.subscribed, false);
+        assert.equal(sub.previously_subscribed, true);
+
+        // Guest users can access subscribers of web public streams, and
+        // subscribe themselves.
+        if (sub.is_web_public) {
+            assert.equal(sub.can_access_subscribers, true);
+            assert.equal(sub.should_display_subscription_button, true);
+        } else {
+            assert.equal(sub.can_access_subscribers, false);
+            assert.equal(sub.should_display_subscription_button, false);
+        }
+        assert.equal(sub.should_display_preview_button, true);
+    }
+
+    function check_never_sub_stream(sub) {
+        assert.equal(sub.subscribed, false);
+        assert.equal(sub.previously_subscribed, false);
+        // The only never subscribed streams that a guest user can browse are
+        // web public streams.
+        assert.equal(sub.is_web_public, true);
+        assert.equal(sub.can_access_subscribers, true);
+        assert.equal(sub.should_display_subscription_button, true);
+    }
+
+    subs.forEach((sub) => {
+        if (unsub_stream_ids.indexOf(sub.stream_id) > -1) {
+            check_unsub_stream(sub);
+        } else if (sub_stream_ids.indexOf(sub.stream_id) > -1) {
+            check_sub_stream(sub);
+        } else if (never_sub_ids.indexOf(sub.stream_id) > -1) {
+            check_never_sub_stream(sub);
+        }
+    });
 });
 
 run_test('default_stream_names', () => {
