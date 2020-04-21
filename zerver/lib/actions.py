@@ -4814,6 +4814,7 @@ def gather_subscriptions_helper(user_profile: UserProfile,
                                 if ns_stream_dict['id'] in never_subscribed_stream_ids]
 
     for stream in never_subscribed_streams:
+        # This is_public variable will be true for both, public and web_public streams.
         is_public = (not stream['invite_only'])
         if is_public or user_profile.is_realm_admin:
             stream_dict = {}

@@ -2184,6 +2184,26 @@ paths:
           type: boolean
           default: false
         example: true
+      - name: is_web_public
+        in: query
+        description: A boolean specifying whether the streams specified in
+          `ubscriptions` are web public or not.
+        schema:
+          type: boolean
+          default: false
+        example: true
+      - name: principals
+        in: query
+        description: |
+          A list of email addresses of the users that will be subscribed to the
+          streams specified in the `subscriptions` argument. If not provided, then
+          the requesting user/bot is subscribed.
+        schema:
+          type: array
+          items:
+            type: string
+          default: []
+        example: ['ZOE@zulip.com']
       - $ref: '#/components/parameters/Principals'
       - name: authorization_errors_fatal
         in: query

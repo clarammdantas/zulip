@@ -27,7 +27,7 @@ from zerver.lib.response import (
 
 from zerver.lib.streams import (
     access_stream_by_id, access_stream_by_name, filter_stream_authorization,
-    list_to_streams, create_streams_if_needed
+    list_to_streams, create_streams_if_needed, can_access_stream_history
 )
 
 from zerver.lib.stream_subscription import (
@@ -2665,10 +2665,10 @@ class SubscriptionAPITest(ZulipTestCase):
         self.assertEqual(json["already_subscribed"], {})
 
     def test_guest_user_subscribe(self) -> None:
-        """Guest users cannot subscribe themselves to anything"""
+        """Guest users can only subscribe themselves in web public streams."""
         guest_user = self.example_user("polonius")
         result = self.common_subscribe_to_streams(guest_user, ["Denmark"])
-        self.assert_json_error(result, "Not allowed for guest users")
+        self.assert_json_error(result, "Unable to access stream (Denmark).")
 
         # Verify the internal checks also block guest users.
         stream = get_stream("Denmark", guest_user.realm)
@@ -2688,9 +2688,15 @@ class SubscriptionAPITest(ZulipTestCase):
 
         stream = self.make_stream('private_stream', invite_only=True)
         result = self.common_subscribe_to_streams(guest_user, ["private_stream"])
-        self.assert_json_error(result, "Not allowed for guest users")
+        self.assert_json_error(result, "Unable to access stream (private_stream).")
         self.assertEqual(filter_stream_authorization(guest_user, [stream]),
                          ([], [stream]))
+
+        web_public_stream = self.make_stream('web_public_stream', is_web_public=True)
+        result = self.common_subscribe_to_streams(guest_user, ['web_public_stream'],
+                                                  is_web_public=True)
+        self.assert_json_success(result)
+        self.assertTrue(can_access_stream_history(guest_user, web_public_stream))
 
     def test_users_getting_add_peer_event(self) -> None:
         """
@@ -3820,7 +3826,8 @@ class GetSubscribersTest(ZulipTestCase):
                 self.assertNotIn("subscribers", unsub)
         self.assertTrue(expected_stream_exists)
 
-        # Guest user don't get data about never subscribed public stream's data
+        # Guest user only get data about never subscribed streams if they're
+        # web public.
         for stream in neversubs:
             self.assertTrue(stream['is_web_public'])
 
@@ -4079,6 +4086,13 @@ class AccessStreamTest(ZulipTestCase):
         self.assertEqual(stream.id, stream_ret.id)
         self.assertEqual(sub_ret.recipient, rec_ret)
         self.assertEqual(sub_ret.recipient.type_id, stream.id)
+
+        stream_name = "web_public_stream"
+        stream = self.make_stream(stream_name, guest_user_profile.realm, is_web_public=True)
+        # Guest users have access to web public streams even if they aren't subscribed.
+        (stream_ret, rec_ret, sub_ret) = access_stream_by_id(guest_user_profile, stream.id)
+        assert sub_ret is None
+        self.assertEqual(stream.id, stream_ret.id)
 
 class StreamTrafficTest(ZulipTestCase):
     def test_average_weekly_stream_traffic_calculation(self) -> None:

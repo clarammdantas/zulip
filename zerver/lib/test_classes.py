@@ -736,8 +736,9 @@ class ZulipTestCase(TestCase):
     # Subscribe to a stream by making an API request
     def common_subscribe_to_streams(self, user: UserProfile, streams: Iterable[str],
                                     extra_post_data: Dict[str, Any]={}, invite_only: bool=False,
-                                    **kwargs: Any) -> HttpResponse:
+                                    is_web_public: Optional[bool]=False, **kwargs: Any) -> HttpResponse:
         post_data = {'subscriptions': ujson.dumps([{"name": stream} for stream in streams]),
+                     'is_web_public': ujson.dumps(is_web_public),
                      'invite_only': ujson.dumps(invite_only)}
         post_data.update(extra_post_data)
         result = self.api_post(user, "/api/v1/users/me/subscriptions", post_data, **kwargs)

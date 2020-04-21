@@ -649,9 +649,9 @@ exports.change_state = function (section) {
     // if the section is a valid number.
     if (/\d+/.test(section)) {
         const stream_id = parseInt(section, 10);
-        // Guest users can not access unsubscribed streams
-        // So redirect guest users to 'subscribed' tab
-        // for any unsubscribed stream settings hash
+        // Guest users can not access unsubscribed streams, unless
+        // it is a web public stream. So redirect guest users to
+        // 'subscribed' tab for any unsubscribed stream settings hash
         if (page_params.is_guest && !stream_data.id_is_subscribed(stream_id)) {
             exports.toggler.goto('subscribed');
         } else {
@@ -781,9 +781,12 @@ function ajaxSubscribe(stream, color, stream_row) {
     if (stream_row !== undefined) {
         display_subscribe_toggle_spinner(stream_row);
     }
+
+    const data = {};
+    data.subscriptions = JSON.stringify([{name: stream, color: color}]);
     return channel.post({
         url: "/json/users/me/subscriptions",
-        data: {subscriptions: JSON.stringify([{name: stream, color: color}]) },
+        data: data,
         success: function (resp, statusText, xhr) {
             if (overlays.streams_open()) {
                 $("#create_stream_name").val("");
