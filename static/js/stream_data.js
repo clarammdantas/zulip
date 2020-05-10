@@ -448,7 +448,7 @@ exports.update_calculated_fields = function (sub) {
     sub.can_change_name_description = page_params.is_admin;
     // If stream is public then any user can subscribe. If stream is private then only
     // subscribed users can unsubscribe.
-    // Guest users can't subscribe themselves to any stream.
+    // Guest users can't subscribe themselves to any stream other than web public.
     sub.should_display_subscription_button = sub.subscribed ||
         !(page_params.is_guest && !sub.is_web_public) && !sub.invite_only;
     sub.should_display_preview_button = sub.subscribed || !sub.invite_only ||
@@ -457,7 +457,10 @@ exports.update_calculated_fields = function (sub) {
         !sub.invite_only || sub.subscribed);
     // User can add other users to stream if stream is public or user is subscribed to stream.
     // Guest users can only access subscribers of web_public streams they can join.
-    sub.can_access_subscribers = page_params.is_admin || sub.should_display_preview_button;
+    const user_can_access_subscribers = page_params.is_guest && sub.subscribed ||
+                                        sub.is_web_public || !page_params.is_guest;
+    sub.can_access_subscribers = page_params.is_admin || sub.should_display_preview_button &&
+                                 user_can_access_subscribers;
     sub.preview_url = hash_util.by_stream_uri(sub.stream_id);
     sub.can_add_subscribers = !page_params.is_guest && (!sub.invite_only || sub.subscribed);
     if (sub.rendered_description !== undefined) {
