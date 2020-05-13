@@ -148,29 +148,11 @@ function create_stream() {
     }
     data.subscriptions = JSON.stringify([{name: stream_name, description: description}]);
 
-    let invite_only;
-    let history_public_to_subscribers;
-    let is_web_public;
     const privacy_setting = $('#stream_creation_form input[name=privacy]:checked').val();
 
-    // TODO: Infer the variables so there is no need to define all three.
-    if (privacy_setting === 'invite-only') {
-        is_web_public = false;
-        invite_only = true;
-        history_public_to_subscribers = false;
-    } else if (privacy_setting === 'invite-only-public-history') {
-        is_web_public = false;
-        invite_only = true;
-        history_public_to_subscribers = true;
-    } else if (privacy_setting === 'is-web-public') {
-        is_web_public = true;
-        invite_only = false;
-        history_public_to_subscribers = true;
-    } else {
-        is_web_public = false;
-        invite_only = false;
-        history_public_to_subscribers = true;
-    }
+    const is_web_public = ['is-web-public'].includes(privacy_setting);
+    const invite_only = ['invite-only', 'invite-only-public-history'].includes(privacy_setting);
+    const history_public_to_subscribers = ['invite-only-public-history', 'is-web-public', 'public'].includes(privacy_setting);
     data.is_web_public = JSON.stringify(is_web_public);
     data.invite_only = JSON.stringify(invite_only);
     data.history_public_to_subscribers = JSON.stringify(history_public_to_subscribers);
